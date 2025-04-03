@@ -119,9 +119,9 @@
             <iframe id="preview-frame" class="preview-frame"></iframe>
         </div>
 
-        <div id="timeout-dialog" class="dialog-overlay">
+        <div id="setting-dialog" class="dialog-overlay">
             <div class="dialog">
-                <h3 data-i18n="setTimeoutTitle">设置超时时间</h3>
+                <h3 data-i18n="setTimeoutTitle">设置</h3>
                 
                 <div class="setting-item">
                     <label for="timeout-value" data-i18n="timeoutLabel" class="setting-label">
@@ -141,6 +141,17 @@
 
                 </div>
 
+                <div class="timeout-explanation">
+                    <p data-i18n="timeoutExplanation">
+                        超时时间决定了检查每个链接时的最长等待时间。时间越长，检查越充分，但整体扫描时间会更久；时间越短，扫描越快，但可能会误判部分加载较慢的网站。
+                    </p>
+                    <ul class="timeout-tips">
+                        <li data-i18n="timeoutTip1">• 建议值：10-15 秒</li>
+                        <li data-i18n="timeoutTip2">• 网络较差时建议设置更长时间</li>
+                        <li data-i18n="timeoutTip3">• 链接较多时可以适当缩短时间</li>
+                    </ul>
+                </div>
+
                 <div class="setting-item">
                     <label class="setting-label" data-i18n="urlMatchModeLabel">URL匹配模式：</label>
                     <div class="radio-group">
@@ -155,15 +166,21 @@
                     </div>
                 </div>
 
-                <div class="timeout-explanation">
-                    <p data-i18n="timeoutExplanation">
-                        超时时间决定了检查每个链接时的最长等待时间。时间越长，检查越充分，但整体扫描时间会更久；时间越短，扫描越快，但可能会误判部分加载较慢的网站。
-                    </p>
-                    <ul class="timeout-tips">
-                        <li data-i18n="timeoutTip1">• 建议值：10-15 秒</li>
-                        <li data-i18n="timeoutTip2">• 网络较差时建议设置更长时间</li>
-                        <li data-i18n="timeoutTip3">• 链接较多时可以适当缩短时间</li>
-                    </ul>
+                <div class="setting-item">
+                    <label class="setting-label" data-i18n="whitelistLabel">白名单URL：</label>
+                    <div class="whitelist-input-container">
+                        <textarea id="whitelist-urls" class="whitelist-input" rows="3" placeholder="输入要忽略的URL，使用逗号分隔。支持*通配符和正则表达式，例如：*.example.com, /^https?:\/\/.*\.test\.com/"></textarea>
+                    </div>
+                    <div class="whitelist-explanation">
+                        <p data-i18n="whitelistExplanation">
+                            白名单中的URL将被忽略检测。支持以下格式：
+                        </p>
+                        <ul class="whitelist-tips">
+                            <li data-i18n="whitelistTip1">• 完整URL：https://example.com</li>
+                            <li data-i18n="whitelistTip2">• 通配符：*.example.com</li>
+                            <li data-i18n="whitelistTip3">• 正则表达式：使用/开始和结束，如 /.*\.example\.com/</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="dialog-actions">

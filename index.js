@@ -230,14 +230,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     scanButton.setAttribute('data-scan-text', chrome.i18n.getMessage('scanning', 'Scanning...'));
     scanButton.setAttribute('data-cancel-text', chrome.i18n.getMessage('cancelScan', 'Cancel'));
     
-    let scanCancelled = false;
-    
     scanButton.addEventListener('click', async () => {
         const container = document.querySelector('.scan-container');
         const settingsButton = document.getElementById('settings-button');
         
         // 如果正在扫描，则取消扫描
         if (container.classList.contains('scanning')) {
+            scanCancelled = true;
             await cancelScan();
             
             // 更新UI状态
@@ -256,6 +255,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
+        // 检查是否是首次扫描
+        if (await isFirstScan()) {
+            // 显示超时设置对话框
+            showTimeoutDialog();
+            return; // 首次扫描时，先让用户设置参数
+        }
+
         // 开始新扫描时隐藏设置按钮
         if (settingsButton) {
             settingsButton.style.display = 'none';
@@ -264,45 +270,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 开始新扫描
         // 重置所有数据（只在开始新扫描时调用一次）
         resetScanData();
-        
-        // 检查是否是首次扫描
-        if (await isFirstScan()) {
-            // 显示超时设置对话框
-            showTimeoutDialog();
-            
-            // 等待用户确认设置
-            const confirmed = await new Promise(resolve => {
-                const dialog = document.getElementById('timeout-dialog');
-                const confirmBtn = document.getElementById('confirm-timeout');
-                const cancelBtn = document.getElementById('cancel-timeout');
-                
-                const handleConfirm = () => {
-                    cleanup();
-                    resolve(true);
-                };
-                
-                const handleCancel = () => {
-                    cleanup();
-                    resolve(false);
-                };
-                
-                const cleanup = () => {
-                    confirmBtn.removeEventListener('click', handleConfirm);
-                    cancelBtn.removeEventListener('click', handleCancel);
-                };
-                
-                confirmBtn.addEventListener('click', handleConfirm);
-                cancelBtn.addEventListener('click', handleCancel);
-            });
-            
-            // 如果用户取消了设置，则不开始扫描
-            if (!confirmed) {
-                return;
-            }
-            
-            // 标记已经扫描过
-            await markScanned();
-        }
         
         // 开始新扫描前重置所有数据
         resetScanData();
@@ -1574,8 +1541,6 @@ function finishScan() {
 
 // 在取消扫描时重置计时器
 async function cancelScan() {
-    scanCancelled = true;
-    
     // 取消所有正在进行的请求
     await chrome.runtime.sendMessage({ type: 'cancelScan' });
     
