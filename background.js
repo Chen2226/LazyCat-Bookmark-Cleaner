@@ -1,4 +1,4 @@
-import { getCurrentTimeout } from './settings.js';
+import { getCurrentTimeout, URL_MATCH_MODE } from './settings.js';
 
 // 添加调试开关
 const DEBUG = {
@@ -44,6 +44,21 @@ const CONFIG = {
   }
 };
 
+// 提取域名的函数
+function extractDomain(url) {
+  try {
+    // 直接提取http://或https://后面到第一个斜杠之前的部分
+    const match = url.match(/^https?:\/\/([^/]+)/);
+    if (match) {
+      return match[0] + '/';
+    }
+    return null;
+  } catch (error) {
+    console.error('Error extracting domain:', error);
+    return null;
+  }
+}
+
 // 添加 onInstalled 事件监听器
 chrome.runtime.onInstalled.addListener((details) => {
   // 仅在首次安装时打开页面
@@ -71,26 +86,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.type === 'checkUrl') {
-    const controller = new AbortController();
-    activeRequests.add(controller);
-    
-    checkUrl(request.url, controller.signal)
-      .then(result => {
-        activeRequests.delete(controller);
-        sendResponse(result);
-      })
-      .catch(error => {
-        activeRequests.delete(controller);
-        sendResponse({ 
-          isValid: false, 
-          reason: error.message 
+    chrome.storage.local.get(['urlMatchMode']).then(result => {
+      const urlMatchMode = result.urlMatchMode || URL_MATCH_MODE.FULL;
+      const controller = new AbortController();
+      activeRequests.add(controller);
+      
+      checkUrl(request.url, controller.signal, urlMatchMode)
+        .then(result => {
+          activeRequests.delete(controller);
+          sendResponse(result);
+        })
+        .catch(error => {
+          activeRequests.delete(controller);
+          sendResponse({ 
+            isValid: false, 
+            reason: error.message 
+          });
         });
-      });
+    });
     return true;
   }
 });
 
-async function checkUrl(url, signal) {
+async function checkUrl(url, signal, matchMode = URL_MATCH_MODE.FULL) {
+    // 如果是域名匹配模式，提取当前URL的域名
+    let Url = matchMode === URL_MATCH_MODE.DOMAIN ? extractDomain(url) : url;
+
     try {
         // 添加信号到请求中
         const controller = new AbortController();
@@ -103,7 +124,7 @@ async function checkUrl(url, signal) {
         
         activeRequests.add(controller);
         
-        const result = await checkUrlOnce(url, localSignal);
+        const result = await checkUrlOnce(Url, localSignal, matchMode);
         
         activeRequests.delete(controller);
         return result;
@@ -115,11 +136,25 @@ async function checkUrl(url, signal) {
     }
 }
 
-async function checkUrlOnce(url) {
+// URL检查结果缓存
+const urlCheckCache = new Map();
+
+async function checkUrlOnce(url, signal, matchMode = URL_MATCH_MODE.FULL) {
   const startTime = Date.now();
   try {
     // 获取用户设置的超时时间
     const timeout = await getCurrentTimeout();
+    
+    // 根据匹配模式确定缓存键
+    const cacheKey = matchMode === URL_MATCH_MODE.DOMAIN ? 
+      `domain:${extractDomain(url)}` : 
+      url;
+    
+    // 检查缓存
+    if (urlCheckCache.has(cacheKey)) {
+      debugLog(`🔍 Cache hit for ${cacheKey}`);
+      return urlCheckCache.get(cacheKey);
+    }
     
     debugGroup(`🔍 Checking URL: ${url}`);
     debugLog(`⏱️ Start Time: ${new Date(startTime).toLocaleTimeString()}`);
@@ -289,6 +324,14 @@ async function checkUrlOnce(url) {
           logRequestResult();
           debugGroupEnd();
           debugLog(`🏁 Final result:`, result);
+          
+          // 根据匹配模式缓存结果
+          if (matchMode === URL_MATCH_MODE.DOMAIN) {
+            const domain = extractDomain(url);
+            urlCheckCache.set(`domain:${domain}`, result);
+          } else {
+            urlCheckCache.set(url, result);
+          }
           
           resolve(result);
         }

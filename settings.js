@@ -5,6 +5,11 @@ const TIMEOUT_CONFIG = {
     DEFAULT: 15  // 默认超时时间（秒）
 };
 
+const URL_MATCH_MODE = {
+    FULL: 'full',      // 完整URL匹配
+    DOMAIN: 'domain'   // 仅域名匹配
+};
+
 // 初始化设置
 async function initSettings() {
     // 初始化超时设置对话框
@@ -34,7 +39,8 @@ function initTimeoutDialog() {
     // 确认按钮处理
     confirmButton.addEventListener('click', async () => {
         const timeout = parseInt(timeoutValue.value);
-        await saveSettings({ timeout });
+        const selectedUrlMatchMode = document.querySelector('input[name="urlMatchMode"]:checked').value;
+        await saveSettings({ timeout, urlMatchMode: selectedUrlMatchMode });
         timeoutDialog.style.display = 'none';
     });
 
@@ -49,8 +55,10 @@ function initTimeoutDialog() {
 // 保存设置到 storage
 async function saveSettings(settings) {
     try {
+        const currentSettings = await chrome.storage.local.get(['timeout', 'urlMatchMode']);
         await chrome.storage.local.set({
-            timeout: settings.timeout * 1000 // 转换为毫秒存储
+            timeout: settings.timeout !== undefined ? settings.timeout * 1000 : currentSettings.timeout, // 转换为毫秒存储
+            urlMatchMode: settings.urlMatchMode !== undefined ? settings.urlMatchMode : (currentSettings.urlMatchMode || URL_MATCH_MODE.FULL)
         });
         console.log('Settings saved:', settings);
     } catch (error) {
@@ -63,19 +71,29 @@ async function loadSettings() {
     try {
         const timeoutValue = document.getElementById('timeout-value');
         const timeoutDisplay = document.getElementById('timeout-display');
+        const urlMatchModeRadios = document.querySelectorAll('input[name="urlMatchMode"]');
 
-        const result = await chrome.storage.local.get(['timeout']);
+        const result = await chrome.storage.local.get(['timeout', 'urlMatchMode']);
         const timeoutSeconds = result.timeout 
             ? Math.floor(result.timeout / 1000) 
             : TIMEOUT_CONFIG.DEFAULT;
+        const urlMatchMode = result.urlMatchMode || URL_MATCH_MODE.FULL;
 
         if (timeoutValue && timeoutDisplay) {
             timeoutValue.value = timeoutSeconds;
             timeoutDisplay.textContent = timeoutSeconds;
         }
 
+        // 设置URL匹配模式的单选按钮状态
+        urlMatchModeRadios.forEach(radio => {
+            if (radio.value === urlMatchMode) {
+                radio.checked = true;
+            }
+        });
+
         return {
-            timeout: timeoutSeconds * 1000 // 返回毫秒值
+            timeout: timeoutSeconds * 1000, // 返回毫秒值
+            urlMatchMode: urlMatchMode
         };
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -127,9 +145,11 @@ async function markScanned() {
 // 导出需要的函数和常量
 export {
     TIMEOUT_CONFIG,
+    URL_MATCH_MODE,
     initSettings,
     showTimeoutDialog,
     getCurrentTimeout,
     isFirstScan,
-    markScanned
-}; 
+    markScanned,
+    saveSettings
+};
