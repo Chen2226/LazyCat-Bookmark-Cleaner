@@ -60,7 +60,6 @@ function extractDomain(url) {
 }
 
 // 检查URL是否在白名单中
-// 检查URL是否在白名单中
 async function isUrlWhitelisted(url) {
   try {
     const result = await chrome.storage.local.get(['whitelist']);
@@ -145,13 +144,9 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 // 处理 URL 检查请求
-// 添加一个标志来跟踪扫描是否被取消
-let scanCancelled = false;
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'cancelScan') {
-    // 设置取消标志
-    scanCancelled = true;
+    console.log('取消', activeRequests)
     // 取消所有活动请求
     activeRequests.forEach(controller => controller.abort());
     activeRequests.clear();
@@ -159,15 +154,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'checkUrl') {
-    // 如果扫描已被取消，直接返回而不处理请求
-    if (scanCancelled) {
-      sendResponse({
-        isValid: false,
-        reason: 'Scan cancelled'
-      });
-      return true;
-    }
-
     chrome.storage.local.get(['urlMatchMode']).then(result => {
       const urlMatchMode = result.urlMatchMode || URL_MATCH_MODE.FULL;
       const controller = new AbortController();
@@ -176,29 +162,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       checkUrl(request.url, controller.signal, urlMatchMode)
         .then(result => {
           activeRequests.delete(controller);
-          // 只有在扫描未被取消的情况下才发送响应
-          if (!scanCancelled) {
-            sendResponse(result);
-          }
+          sendResponse(result);
         })
         .catch(error => {
           activeRequests.delete(controller);
-          // 只有在扫描未被取消的情况下才发送响应
-          if (!scanCancelled) {
-            sendResponse({
-              isValid: false,
-              reason: error.message
-            });
-          }
+          sendResponse({
+            isValid: false,
+            reason: error.message
+          });
         });
     });
     return true;
-  }
-
-  // 添加重置取消标志的消息类型
-  if (request.type === 'resetScanState') {
-    scanCancelled = false;
-    return;
   }
 });
 
