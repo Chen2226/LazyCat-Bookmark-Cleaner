@@ -122,8 +122,8 @@ async function loadSettings() {
         const urlMatchModeRadios = document.querySelectorAll('input[name="urlMatchMode"]');
 
         const result = await chrome.storage.local.get(['timeout', 'urlMatchMode', 'hasScanned']);
-        const timeoutSeconds = result.timeout 
-            ? Math.floor(result.timeout / 1000) 
+        const timeoutSeconds = result.timeout
+            ? Math.floor(result.timeout / 1000)
             : TIMEOUT_CONFIG.DEFAULT;
         const urlMatchMode = result.urlMatchMode || URL_MATCH_MODE.FULL;
         const hasScanned = result.hasScanned || false;
@@ -196,45 +196,24 @@ async function isUrlWhitelisted(url) {
     try {
         const result = await chrome.storage.local.get(['whitelist', 'urlMatchMode']);
         const whitelist = result.whitelist || [];
-        const urlMatchMode = result.urlMatchMode || URL_MATCH_MODE.FULL;
-        
+
         if (!whitelist.length) return false;
-        
-        // 根据匹配模式获取要匹配的URL
-        const urlToMatch = urlMatchMode === URL_MATCH_MODE.DOMAIN ? extractDomain(url) : url;
-        if (!urlToMatch) return false;
-        
+
         // 调试日志
-        console.log('Checking URL against whitelist:', urlToMatch);
+        console.log('Checking URL against whitelist:', url);
         console.log('Whitelist patterns:', whitelist);
-        
+
         for (const pattern of whitelist) {
-            // 所有白名单项都是通配符转换的正则表达式
-            if (pattern.startsWith('/') && pattern.endsWith('/')) {
-                try {
-                    const regexPattern = pattern.slice(1, -1);
-                    console.log('Testing wildcard pattern:', regexPattern, 'against URL:', urlToMatch);
-                    
-                    // 创建正则表达式对象并测试
-                    // 添加i标志使匹配不区分大小写，添加u标志支持Unicode
-                    const regex = new RegExp(regexPattern, 'iu');
-                    const result = regex.test(urlToMatch);
-                    
-                    console.log('Wildcard test result for', urlToMatch, ':', result);
-                    
-                    // 匹配成功，URL在白名单中
-                    if (result) {
-                        console.log('Wildcard match found!');
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Invalid pattern:', pattern, e);
-                }
+            // 通配符
+            const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+            if (regex.test(url)) {
+                console.log('Whitelist match found for URL:', url);
+                return true;
             }
         }
-        
+
         // 如果所有模式都检查完毕但没有匹配
-        console.log('No whitelist match found for URL:', urlToMatch);
+        console.log('No whitelist match found for URL:', url);
         return false;
     } catch (error) {
         console.error('Error checking whitelist:', error);
@@ -252,5 +231,6 @@ export {
     isFirstScan,
     markScanned,
     saveSettings,
-    isUrlWhitelisted
+    isUrlWhitelisted,
+    extractDomain
 };

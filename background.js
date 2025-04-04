@@ -1,4 +1,4 @@
-import { getCurrentTimeout, URL_MATCH_MODE } from './settings.js';
+import { getCurrentTimeout, URL_MATCH_MODE,extractDomain,isUrlWhitelisted } from './settings.js';
 
 // 添加调试开关
 const DEBUG = {
@@ -44,88 +44,6 @@ const CONFIG = {
   }
 };
 
-// 提取域名的函数
-function extractDomain(url) {
-  try {
-    // 直接提取http://或https://后面到第一个斜杠之前的部分
-    const match = url.match(/^https?:\/\/([^/]+)/);
-    if (match) {
-      return match[0] + '/';
-    }
-    return null;
-  } catch (error) {
-    console.error('Error extracting domain:', error);
-    return null;
-  }
-}
-
-// 检查URL是否在白名单中
-async function isUrlWhitelisted(url) {
-  try {
-    const result = await chrome.storage.local.get(['whitelist']);
-    const whitelist = result.whitelist || [];
-
-    if (!whitelist.length) return false;
-
-    // 调试日志
-    debugLog('Whitelist patterns:', whitelist);
-
-    for (const pattern of whitelist) {
-      // 处理两种情况：已转换的正则表达式和原始通配符
-      if (pattern.startsWith('/') && pattern.endsWith('/')) {
-        // 已经是正则表达式格式
-        try {
-          const regexPattern = pattern.slice(1, -1);
-          debugLog('Testing regex pattern:', regexPattern, 'against URL:', url);
-
-          // 创建正则表达式对象并测试
-          const regex = new RegExp(regexPattern, 'iu');
-          const result = regex.test(url);
-
-          debugLog('Regex test result for', url, ':', result);
-
-          if (result) {
-            debugLog('Regex match found!');
-            return true;
-          }
-        } catch (e) {
-          console.error('Invalid regex pattern:', pattern, e);
-        }
-      } else {
-        // 通配符格式（如 "*git*"）需要转换为正则表达式
-        try {
-          // 转换通配符为正则表达式
-          const regexPattern = pattern
-            .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // 转义正则特殊字符
-            .replace(/\*/g, '.*'); // 将 * 转换为 .*
-
-          debugLog('Testing wildcard pattern:', pattern, '(converted to:', regexPattern, ') against URL:', url);
-
-          // 创建正则表达式对象并测试
-          const regex = new RegExp(regexPattern, 'iu');
-          const result = regex.test(url);
-
-          debugLog('Wildcard test result for', url, ':', result);
-
-          if (result) {
-            debugLog('Wildcard match found!');
-            return true;
-          }
-        } catch (e) {
-          console.error('Invalid wildcard pattern:', pattern, e);
-        }
-      }
-    }
-
-    // 如果所有模式都检查完毕但没有匹配
-    debugLog('No whitelist match found for URL:', url);
-    return false;
-  } catch (error) {
-    console.error('Error checking whitelist:', error);
-    return false;
-  }
-}
-
 // 添加 onInstalled 事件监听器
 chrome.runtime.onInstalled.addListener((details) => {
   // 仅在首次安装时打开页面
@@ -146,7 +64,6 @@ chrome.action.onClicked.addListener((tab) => {
 // 处理 URL 检查请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'cancelScan') {
-    console.log('取消', activeRequests)
     // 取消所有活动请求
     activeRequests.forEach(controller => controller.abort());
     activeRequests.clear();
@@ -179,7 +96,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function checkUrl(url, signal, matchMode = URL_MATCH_MODE.FULL) {
   // 如果是域名匹配模式，提取当前URL的域名
   let Url = matchMode === URL_MATCH_MODE.DOMAIN ? extractDomain(url) : url;
-
   try {
     // 添加信号到请求中
     const controller = new AbortController();
@@ -204,9 +120,6 @@ async function checkUrl(url, signal, matchMode = URL_MATCH_MODE.FULL) {
   }
 }
 
-// URL检查结果缓存
-const urlCheckCache = new Map();
-
 async function checkUrlOnce(url, signal, matchMode = URL_MATCH_MODE.FULL) {
   const startTime = Date.now();
   try {
@@ -220,17 +133,6 @@ async function checkUrlOnce(url, signal, matchMode = URL_MATCH_MODE.FULL) {
 
     // 获取用户设置的超时时间
     const timeout = await getCurrentTimeout();
-
-    // 根据匹配模式确定缓存键
-    const cacheKey = matchMode === URL_MATCH_MODE.DOMAIN ?
-      `domain:${extractDomain(url)}` :
-      url;
-
-    // 检查缓存
-    if (urlCheckCache.has(cacheKey)) {
-      debugLog(`🔍 Cache hit for ${cacheKey}`);
-      return urlCheckCache.get(cacheKey);
-    }
 
     debugGroup(`🔍 Checking URL: ${url}`);
     debugLog(`⏱️ Start Time: ${new Date(startTime).toLocaleTimeString()}`);
@@ -400,14 +302,6 @@ async function checkUrlOnce(url, signal, matchMode = URL_MATCH_MODE.FULL) {
           logRequestResult();
           debugGroupEnd();
           debugLog(`🏁 Final result:`, result);
-
-          // 根据匹配模式缓存结果
-          if (matchMode === URL_MATCH_MODE.DOMAIN) {
-            const domain = extractDomain(url);
-            urlCheckCache.set(`domain:${domain}`, result);
-          } else {
-            urlCheckCache.set(url, result);
-          }
 
           resolve(result);
         }
