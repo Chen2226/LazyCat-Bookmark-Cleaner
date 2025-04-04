@@ -574,16 +574,10 @@
     "message": "Whitelist URL："
   },
   "whitelistExplanation": {
-    "message": "URLs in the whitelist will be ignored for detection. The following formats are supported："
-  },
-  "whitelistTip1": {
-    "message": "• Full URL：https://example.com"
+    "message": "URLs in the whitelist will be ignored for detection. The following format is supported："
   },
   "whitelistTip2": {
-    "message": "• Wild-card: *. example.com"
-  },
-  "whitelistTip3": {
-    "message": "• Regular expressions: start and end with/, such as /. *\\ .example\\ .com/"
+    "message": "• Wild-card: *.example.com"
   },
   "scanSettings": {
     "message": "Scan Settings"

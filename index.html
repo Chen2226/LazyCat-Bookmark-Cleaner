@@ -169,16 +169,14 @@
                 <div class="setting-item">
                     <label class="setting-label" data-i18n="whitelistLabel">白名单URL：</label>
                     <div class="whitelist-input-container">
-                        <textarea id="whitelist-urls" class="whitelist-input" rows="3" placeholder="输入要忽略的URL，使用逗号分隔。支持*通配符和正则表达式，例如：*.example.com, /^https?:\/\/.*\.test\.com/"></textarea>
+                        <textarea id="whitelist-urls" class="whitelist-input" rows="3" placeholder="输入要忽略的URL，使用逗号分隔。仅支持*通配符，例如：*.example.com, *.test.com"></textarea>
                     </div>
                     <div class="whitelist-explanation">
                         <p data-i18n="whitelistExplanation">
                             白名单中的URL将被忽略检测。支持以下格式：
                         </p>
                         <ul class="whitelist-tips">
-                            <li data-i18n="whitelistTip1">• 完整URL：https://example.com</li>
                             <li data-i18n="whitelistTip2">• 通配符：*.example.com</li>
-                            <li data-i18n="whitelistTip3">• 正则表达式：使用/开始和结束，如 /.*\.example\.com/</li>
                         </ul>
                     </div>
                 </div>

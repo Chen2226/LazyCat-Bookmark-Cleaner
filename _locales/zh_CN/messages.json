@@ -536,14 +536,8 @@
   "whitelistExplanation": {
     "message": "白名单中的URL将被忽略检测。支持以下格式："
   },
-  "whitelistTip1": {
-    "message": "• 完整URL：https://example.com"
-  },
   "whitelistTip2": {
     "message": "• 通配符：*.example.com"
-  },
-  "whitelistTip3": {
-    "message": "• 正则表达式：使用/开始和结束，如 /.*\\.example\\.com/"
   },
   "scanSettings": {
     "message": "扫描设置"

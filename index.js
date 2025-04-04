@@ -1424,6 +1424,10 @@ function getErrorExplanation(errorType) {
 function resetScanState() {
     // 重置扫描标志
     isScanning = false;
+    scanCancelled = false;
+    
+    // 通知background.js重置扫描状态
+    chrome.runtime.sendMessage({ type: 'resetScanState' });
     
     // 重置进度环
     initializeProgressRing();
